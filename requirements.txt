@@ -1,0 +1,8 @@
+Flask==2.3.2
+crewai==0.83.0
+langchain>=0.2.16
+python-dotenv==1.0.0
+gunicorn==21.2.0
+evolutionapi==0.0.5
+mem0ai==0.1.34
+psycopg2==2.9.9

@@ -1,0 +1,57 @@
+version: "3.9"
+
+services:
+  flask_app:
+    volumes:
+      - flask_app_data:/var/lib/meuapp
+    environment:
+      - OPENAI_MODEL_NAME=gpt-4o-mini
+      - OPENAI_API_KEY=sk-proj-6
+      - OPENCAGE_API_KEY=
+      - EVOLUTION_BASE_URL=https://evolution.example.com
+      - EVOLUTION_API_TOKEN=your_token
+      - EVOLUTION_INSTANCE=your_instance
+      - POSTGRES_USER=pgvector
+      - POSTGRES_PASSWORD=123CHANGEME
+      - POSTGRES_DB=vector
+      - POSTGRES_HOST=<postgres host or ipaddress>
+      - POSTGRES_PORT=5432
+      - POSTGRES_COLLECTION_NAME=test
+    networks:
+      - RedeInterna ## MUDAR PARA O Nome da rede interna
+    image: flask_app
+    ports:
+      - "5005:5005"
+    restart: always
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+          constraints:
+            - node.role == manager
+      resources:
+          limits:
+            cpus: '0.5'
+            memory: 384M
+          reservations:
+            cpus: '0.25'
+            memory: 256M
+      labels: 
+          - traefik.enable=true
+          - traefik.http.routers.flask_app.rule=Host(`meuapp.example.com`) ## MUDAR PARA A Url da Ferramenta
+          - traefik.http.services.flask_app.loadbalancer.server.port=5005
+          - traefik.http.routers.flask_app.service=flask_app
+          - traefik.http.routers.flask_app.tls.certresolver=letsencryptresolver
+          - traefik.http.routers.flask_app.entrypoints=websecure
+          - traefik.http.routers.flask_app.tls=true
+
+## --------------------------- RENATO RAMIRO --------------------------- ##
+
+networks:
+  RedeInterna: ## Nome da rede interna
+    name: RedeInterna ## Nome da rede interna
+    external: true
+
+volumes:
+  flask_app_data:
+    external: true
