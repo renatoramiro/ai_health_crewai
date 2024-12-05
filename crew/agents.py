@@ -1,24 +1,67 @@
 from crewai import Agent, LLM
-from crew.tools import GeoLocationTool, WeatherTool
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
 class Agents:
-    def meteorologista(self):
-
-        llm = LLM(
+    def __init__(self):
+        self.llm = LLM(
             model=os.getenv("OPENAI_MODEL_NAME"),
             api_key=os.getenv("OPENAI_API_KEY")
         )
 
+    def manager(self):
+
         return Agent(
-            role='Meteorologista',
-            goal='Informar sobre o clima de determinado lugar',
-            backstory="""Especialista em informar sobre o clima de determinado lugar.""",
+            role='Manager',
+            goal='Coordenar o trabalho dos agentes',
+            backstory="""Especialista em coordenar e gerenciar o trabalho dos agentes.""",
+            verbose=True,
+            allow_delegation=True,
+            llm=self.llm
+        )
+
+    def entrevistador(self):
+
+        return Agent(
+            role='Entrevistador',
+            goal='Obter TODAS as informações básicas do paciente, como: nome, sexo, idade, peso, altura, atividade fisica e preferências alimentares',
+            backstory="""Especialista em escutar e obter informações do paciente.""",
             verbose=True,
             allow_delegation=False,
-            tools=[GeoLocationTool(), WeatherTool()],
-            llm=llm
+            llm=self.llm
+        )
+
+    def nutricionista(self):
+
+        return Agent(
+            role='Nutricionista',
+            goal='Fornecer informações nutricionais personalizadas',
+            backstory="""Especialista experiente em desenvolver dietas personalizadas.""",
+            verbose=True,
+            allow_delegation=False,
+            llm=self.llm
+        )
+
+    def personal_trainer(self):
+
+        return Agent(
+            role='Personal Trainer',
+            goal='Fornecer treinos personalizados para o dia-a-dia',
+            backstory="""Especialista experiente em desenvolver treinos personalizados para atletas de alto desempenho.""",
+            verbose=True,
+            allow_delegation=False,
+            llm=self.llm
+        )
+
+    def redator(self):
+
+        return Agent(
+            role='Redator',
+            goal='Escrever o relatório final com a dieta e o treino personalizado',
+            backstory="""Especialista em escrita de dietas e treinos personalizados.""",
+            verbose=True,
+            allow_delegation=False,
+            llm=self.llm
         )

@@ -1,139 +1,72 @@
-# Flask Weather App Deployment Guide
+# AI Health Fitness
 
-This guide explains how to deploy the Flask Weather App to a VPS using Docker and Gunicorn for production use.
+Um aplicativo de saúde e fitness que utiliza IA para fornecer orientações personalizadas.
 
-## Local Machine Steps
+## Configuração do Ambiente
 
-1. Clean up unnecessary files and prepare for zipping:
+1. Clone o repositório:
 ```bash
-# Remove any unnecessary files
-rm -rf __pycache__
-rm -rf .pytest_cache
-rm -rf .venv
-
-# Create the deployment package
-tar -czvf flask_weather_app.tar.gz .
+git clone [seu-repositorio]
+cd ai_health_fitness
 ```
 
-2. Transfer the zip file to your VPS:
+2. Crie e ative um ambiente virtual:
 ```bash
-scp flask_weather_app.tar.gz username@your-vps-ip:/path/to/deployment
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# ou
+.\venv\Scripts\activate  # Windows
 ```
 
-## VPS Steps
-
-1. Connect to your VPS:
+3. Instale as dependências:
 ```bash
-ssh username@your-vps-ip
+pip install -r requirements.txt
 ```
 
-2. Navigate to your deployment directory and unzip:
-```bash
-cd /path/to/deployment
-tar -xzf flask_weather_app.tar.gz
-cd flask_weather_app
+4. Configure as variáveis de ambiente:
+- Copie o arquivo `.env.example` para `.env`
+- Preencha as variáveis necessárias:
+  - `OPENAI_MODEL_NAME`: Nome do modelo OpenAI a ser usado
+  - `OPENAI_API_KEY`: Sua chave de API do OpenAI
+  - `EVOLUTION_BASE_URL`: URL base da API Evolution
+  - `EVOLUTION_API_TOKEN`: Token de API do Evolution
+  - `EVOLUTION_INSTANCE`: Instância do Evolution
+
+## Estrutura do Projeto
+
+```
+ai_health_fitness/
+├── app/
+│   └── routes.py         # Rotas da aplicação
+├── crew/
+│   ├── agents.py         # Definição dos agentes de IA
+│   ├── tasks.py          # Tarefas dos agentes
+│   └── health_fitness_crew.py  # Lógica principal da crew
+├── .env.example          # Exemplo de variáveis de ambiente
+├── .gitignore           # Arquivos ignorados pelo Git
+└── README.md            # Este arquivo
 ```
 
-3. Build and deploy with Docker:
-```bash
-# Build the Docker image
-docker build -t flask_app:0.01 .
+## Desenvolvimento
 
-# Deploy using Portainer
-# Access your Portainer interface and:
-# 1. Go to Stacks
-# 2. Add a new stack
-# 3. Upload or paste the docker-compose.yml content
-# 4. Deploy the stack
+1. Inicie o servidor de desenvolvimento:
+```bash
+python app.py
 ```
 
-## Production Setup
+2. Acesse a aplicação em `http://localhost:5000`
 
-This application uses Gunicorn as a production-grade WSGI server with the following features:
-- Multiple worker processes (automatically scaled based on CPU cores)
-- Production-grade HTTP server
-- Error logging and monitoring
-- Process management
+## Contribuindo
 
-## Environment Variables
+1. Crie um branch para sua feature
+2. Faça commit das suas alterações
+3. Envie um pull request
 
-Make sure to set these environment variables in Portainer:
-- `OPENAI_MODEL_NAME`: The OpenAI model to use (e.g., gpt-4)
-- `OPENAI_API_KEY`: Your OpenAI API key
-- `OPENCAGE_API_KEY`: Your OpenCage API key
+## Arquivos Ignorados
 
-## Performance Tuning
-
-The Gunicorn configuration (`gunicorn_config.py`) is set up with:
-- Automatic worker process scaling (CPU cores * 2 + 1)
-- Connection backlog of 2048
-- Worker timeout of 30 seconds
-- Keep-alive connections
-- Comprehensive logging
-
-To adjust these settings, modify `gunicorn_config.py` and rebuild the Docker image.
-
-## Verification
-
-After deployment:
-1. Check if the container is running:
-```bash
-docker ps
-```
-
-2. Check the container logs:
-```bash
-docker logs container_name
-```
-
-3. Test the API endpoint:
-```bash
-curl http://your-vps-ip:5005/api/coordinates
-```
-
-## Testing Locally
-
-1. Start the application:
-```bash
-docker-compose up -d
-```
-
-2. Test the webhook endpoint:
-```bash
-curl -X POST http://localhost:5005/api/webhook/agent_zero \
--H "Content-Type: application/json" \
--d '[{
-  "body": {
-    "event": "messages.upsert",
-    "instance": "NOME_DA_SUA_INSTANCIA",
-    "data": {
-      "key": {
-        "remoteJid": "55<seu_numero_whatsapp_com_ddd>@s.whatsapp.net",
-        "fromMe": false,
-        "id": "3AB943940864A837CD4E"
-      },
-      "message": {
-        "conversation": "What is the weather in London?"
-      },
-      "messageType": "extendedTextMessage",
-      "messageTimestamp": 1727783931
-    }
-  }
-}]'
-```
-
-This simulates a WhatsApp message asking about the weather in London. The webhook endpoint will process this request and respond with weather information.
-
-## Troubleshooting
-
-If you encounter issues:
-1. Check container logs:
-```bash
-docker logs container_name
-```
-
-2. Verify environment variables are set correctly in Portainer
-
-3. Ensure all ports are properly exposed and accessible
-
-4. Check network configuration in docker-compose.yml matches your VPS network setup
+O projeto ignora automaticamente:
+- Arquivos Python compilados (`*.pyc`, `__pycache__`)
+- Ambientes virtuais (`venv/`, `.venv/`)
+- Arquivos de IDE (`.vscode/`, `.idea/`)
+- Arquivos de ambiente (`.env`)
+- Logs e caches

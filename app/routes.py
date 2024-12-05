@@ -1,6 +1,6 @@
 import os
 from flask import Blueprint, jsonify, request
-from crew import WeatherCrew
+from crew import HealthFitnessCrew
 from evolutionapi.client import EvolutionClient
 from evolutionapi.models.message import TextMessage
 from mem0 import Memory
@@ -36,7 +36,7 @@ config_pgvector = {
 
 memory = Memory.from_config(config_pgvector)
 
-@api_bp.route("/webhook/agent_zero", methods=["POST"])
+@api_bp.route("/webhook/agent_health", methods=["POST"])
 def whatsapp_webhook():
     try:
         print("=== Iniciando processamento do webhook ===")
@@ -69,7 +69,15 @@ def whatsapp_webhook():
             if message and sender:
                 result = None  # Initialize result variable
                 
-                # Get history and format it
+                # First, add current message to memory
+                print("Adicionando mensagem atual à memória...")
+                try:
+                    result_added = memory.add(message, user_id=str(sender), metadata={"data": "info"})
+                    print("Mensagem adicionada à memória:", result_added)
+                except Exception as add_error:
+                    print("Erro ao adicionar mensagem à memória:", str(add_error))
+                
+                # Then get history and format it
                 print("Buscando histórico na memória...")
                 try:
                     search_results = memory.search(message, user_id=str(sender), limit=20)
@@ -85,21 +93,14 @@ def whatsapp_webhook():
                     print("Erro ao buscar histórico:", str(search_error))
                     history_text = ""
                 
+                # Finally, process with HealthFitnessCrew
                 try:
-                    print("Iniciando processamento com WeatherCrew...")
-                    # Process the weather request first
-                    crew = WeatherCrew()
-                    result = crew.run(message, sender, history_text)
-                    print("Resultado do WeatherCrew:", result)
-                    
-                    # Then try to add to memory
-                    print("Adicionando mensagem à memória...")
-                    result_added = memory.add(message, user_id=str(sender), metadata={"data": "info"})
-                    print("Mensagem adicionada à memória:", result_added)
-                    
-                except Exception as mem_error:
-                    print('Memory error:', str(mem_error))
-                    # Continue execution even if memory fails
+                    print("Iniciando processamento com HealthFitnessCrew...")
+                    crew = HealthFitnessCrew()
+                    result = crew.run(message, history=history_text)
+                    print("Resultado do HealthFitnessCrew:", result)
+                except Exception as crew_error:
+                    print('Erro no processamento do HealthFitnessCrew:', str(crew_error))
                 
                 if result:
                     print("Preparando resposta para WhatsApp...")
@@ -125,7 +126,7 @@ def whatsapp_webhook():
                         
                         return jsonify({
                             "status": "success",
-                            "message": "Weather information sent",
+                            "message": "Information was sent",
                             "sender": sender,
                             "received_message": message
                         })
@@ -133,10 +134,10 @@ def whatsapp_webhook():
                         print("Erro ao enviar mensagem WhatsApp:", str(whatsapp_error))
                         raise
                 else:
-                    print("Nenhum resultado obtido do WeatherCrew")
+                    print("Nenhum resultado obtido do HealthFitnessCrew")
                     return jsonify({
                         "status": "error",
-                        "message": "Failed to process weather request",
+                        "message": "Failed to process information request",
                         "sender": sender,
                         "received_message": message
                     }), 500
