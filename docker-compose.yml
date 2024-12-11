@@ -7,7 +7,6 @@ services:
     environment:
       - OPENAI_MODEL_NAME=gpt-4o-mini
       - OPENAI_API_KEY=sk-proj-6
-      - OPENCAGE_API_KEY=
       - EVOLUTION_BASE_URL=https://evolution.example.com
       - EVOLUTION_API_TOKEN=your_token
       - EVOLUTION_INSTANCE=your_instance

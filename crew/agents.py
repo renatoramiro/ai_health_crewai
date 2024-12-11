@@ -1,6 +1,7 @@
 from crewai import Agent, LLM
 import os
 from dotenv import load_dotenv
+from .tools.send_email_tool import SendEmailTool
 
 load_dotenv()
 
@@ -8,7 +9,13 @@ class Agents:
     def __init__(self):
         self.llm = LLM(
             model=os.getenv("OPENAI_MODEL_NAME"),
-            api_key=os.getenv("OPENAI_API_KEY")
+            api_key=os.getenv("OPENAI_API_KEY"),
+        )
+
+        self.llm_man_int = LLM(
+            model=os.getenv("OPENAI_MODEL_NAME"),
+            api_key=os.getenv("OPENAI_API_KEY"),
+            temperature=0.2
         )
 
     def manager(self):
@@ -19,7 +26,7 @@ class Agents:
             backstory="""Especialista em coordenar e gerenciar o trabalho dos agentes.""",
             verbose=True,
             allow_delegation=True,
-            llm=self.llm
+            llm=self.llm_man_int
         )
 
     def entrevistador(self):
@@ -30,7 +37,7 @@ class Agents:
             backstory="""Especialista em escutar e obter informações do paciente.""",
             verbose=True,
             allow_delegation=False,
-            llm=self.llm
+            llm=self.llm_man_int
         )
 
     def nutricionista(self):
@@ -64,4 +71,16 @@ class Agents:
             verbose=True,
             allow_delegation=False,
             llm=self.llm
+        )
+
+    def enviador_de_email(self):
+
+        return Agent(
+            role='Enviador de Email',
+            goal='Enviar o relatório final por email para o paciente',
+            backstory="""Especialista em envio de emails.""",
+            verbose=True,
+            allow_delegation=False,
+            llm=self.llm,
+            tools=[SendEmailTool()]
         )

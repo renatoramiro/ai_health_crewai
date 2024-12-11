@@ -1,10 +1,12 @@
 import os
 from flask import Blueprint, jsonify, request
-from crew import HealthFitnessCrew
+from crew.health_flow import HealthFlow
 from evolutionapi.client import EvolutionClient
 from evolutionapi.models.message import TextMessage
-from mem0 import Memory
+from db_helper import DatabaseHelper
 from dotenv import load_dotenv
+from datetime import datetime
+import uuid
 
 load_dotenv()
 
@@ -17,24 +19,14 @@ whatsapp_client = EvolutionClient(
 )
 instances = whatsapp_client.instances.fetch_instances()
 
-config_pgvector = {
-    "vector_store": {
-        "provider": "pgvector",
-        "version": "v1.1",
-        "config": {
-            "dbname": os.getenv("POSTGRES_DB"),
-            "collection_name": os.getenv("POSTGRES_COLLECTION_NAME"),
-            "embedding_model_dims": 1536,
-            "user": os.getenv("POSTGRES_USER"),
-            "password": os.getenv("POSTGRES_PASSWORD"),
-            "host": os.getenv("POSTGRES_HOST"),
-            "port": os.getenv("POSTGRES_PORT"),
-            "diskann": False
-        }
-    }
-}
-
-memory = Memory.from_config(config_pgvector)
+# Initialize DatabaseHelper
+db = DatabaseHelper(
+    database=os.getenv("POSTGRES_DB"),
+    user=os.getenv("POSTGRES_USER"),
+    password=os.getenv("POSTGRES_PASSWORD"),
+    host=os.getenv("POSTGRES_HOST", "localhost"),
+    port=os.getenv("POSTGRES_PORT", "5432")
+)
 
 @api_bp.route("/webhook/agent_health", methods=["POST"])
 def whatsapp_webhook():
@@ -70,37 +62,43 @@ def whatsapp_webhook():
                 result = None  # Initialize result variable
                 
                 # First, add current message to memory
-                print("Adicionando mensagem atual à memória...")
+                print("Adicionando mensagem atual ao banco...")
                 try:
-                    result_added = memory.add(message, user_id=str(sender), metadata={"data": "info"})
-                    print("Mensagem adicionada à memória:", result_added)
+                    db.save_conversation({
+                        'session_id': str(sender),
+                        'role': 'user',
+                        'message': str(message),
+                        'created_at': datetime.now().isoformat(),
+                        'sender': str(sender)
+                    })
+                    print("Mensagem adicionada ao banco com sucesso")
                 except Exception as add_error:
-                    print("Erro ao adicionar mensagem à memória:", str(add_error))
+                    print("Erro ao adicionar mensagem ao banco:", str(add_error))
                 
                 # Then get history and format it
-                print("Buscando histórico na memória...")
+                print("Buscando histórico no banco...")
                 try:
-                    search_results = memory.search(message, user_id=str(sender), limit=20)
-                    print("Resultados da busca:", search_results)
+                    conversations = db.get_conversations_by_session(str(sender))
                     history = []
-                    if search_results:
-                        for item in search_results:
-                            if isinstance(item, dict) and 'memory' in item:
-                                history.append(item['memory'])
+                    if conversations:
+                        for conv in conversations:
+                            if conv['content'] and 'message' in conv['content']:
+                                history.append(f"{conv['content']['role'].upper()}: {conv['content']['message']}")
                     history_text = "\n".join(history) if history else ""
                     print("Histórico formatado:", history_text)
                 except Exception as search_error:
                     print("Erro ao buscar histórico:", str(search_error))
                     history_text = ""
                 
-                # Finally, process with HealthFitnessCrew
+                # Finally, process with HealthFlow
                 try:
-                    print("Iniciando processamento com HealthFitnessCrew...")
-                    crew = HealthFitnessCrew()
-                    result = crew.run(message, history=history_text)
-                    print("Resultado do HealthFitnessCrew:", result)
+                    print("Iniciando processamento com HealthFlow...")
+                    flow = HealthFlow()
+                    flow.plot()
+                    result = flow.run(message, history=history_text)
+                    print("Resultado do HealthFlow:", result)
                 except Exception as crew_error:
-                    print('Erro no processamento do HealthFitnessCrew:', str(crew_error))
+                    print('Erro no processamento do HealthFlow:', str(crew_error))
                 
                 if result:
                     print("Preparando resposta para WhatsApp...")
@@ -112,27 +110,40 @@ def whatsapp_webhook():
                     )
                     
                     try:
-                        print("Enviando mensagem via WhatsApp...")
-                        response = whatsapp_client.messages.send_text(
-                            os.getenv("EVOLUTION_INSTANCE"), 
-                            response_message, 
-                            os.getenv("EVOLUTION_INSTANCE_TOKEN")
-                        )
-                        print("Resposta do WhatsApp:", response)
-                        
                         # Add the response to memory
-                        print("Adicionando resposta à memória...")
-                        memory.add(str(result), user_id=str(sender), metadata={"data": "info"})
+                        print("Adicionando resposta ao banco...", result)
+                        db.save_conversation({
+                            'session_id': str(sender),
+                            'role': 'assistant',
+                            'message': str(result),
+                            'created_at': datetime.now().isoformat(),
+                            'sender': str(sender)
+                        })
+                        print("Resposta adicionada ao banco com sucesso")
+
+                        # print("Enviando mensagem via WhatsApp...")
+                        # response = whatsapp_client.messages.send_text(
+                        #     os.getenv("EVOLUTION_INSTANCE"), 
+                        #     response_message, 
+                        #     os.getenv("EVOLUTION_INSTANCE_TOKEN")
+                        # )
+                        # print("Resposta do WhatsApp:", response)
                         
+                        # return jsonify({
+                        #     "status": "success",
+                        #     "message": "Information was sent",
+                        #     "sender": sender,
+                        #     "received_message": message,
+                        #     "response": result
+                        # })
+                    except Exception as error:
+                        print("Erro ao processar resposta:", str(error))
                         return jsonify({
-                            "status": "success",
-                            "message": "Information was sent",
+                            "status": "error",
+                            "message": f"Error processing response: {str(error)}",
                             "sender": sender,
                             "received_message": message
-                        })
-                    except Exception as whatsapp_error:
-                        print("Erro ao enviar mensagem WhatsApp:", str(whatsapp_error))
-                        raise
+                        }), 500
                 else:
                     print("Nenhum resultado obtido do HealthFitnessCrew")
                     return jsonify({

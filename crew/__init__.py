@@ -1,7 +1,7 @@
 from .health_fitness_crew import HealthFitnessCrew
 from .manager_crew import ManagerCrew
-from .entrevistador_crew import EntrevistadorCrew
+from .interview_crew import InterviewCrew
 from .agents import Agents
 from .tasks import Tasks
 
-__all__ = ['HealthFitnessCrew', 'ManagerCrew', 'EntrevistadorCrew', 'Agents', 'Tasks']
+__all__ = ['HealthFitnessCrew', 'ManagerCrew', 'InterviewCrew', 'Agents', 'Tasks']

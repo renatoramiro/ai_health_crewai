@@ -13,80 +13,46 @@ class HealthFitnessCrew:
         self.agents = Agents()
         self.tasks = Tasks()
     
-    def run(self, message, history=None):
+    def run(self, history=None):
         print("Iniciando o fluxo de trabalho...")
         
         # Initialize agents
         print("Inicializando agentes...")
-        manager = self.agents.manager()
-        entrevistador = self.agents.entrevistador()
         nutricionista = self.agents.nutricionista()
         personal_trainer = self.agents.personal_trainer()
         redator = self.agents.redator()
-
-        # Create manager task to check information completeness
-        print("Criando task gerenciar...")
-        gerenciar = self.tasks.gerenciar(
-            manager,
-            message,
+        enviador_de_email = self.agents.enviador_de_email()
+        
+        print("Informações completas. Executando o fluxo completo...")
+        print("Criando task criar_dieta_personalizada...")
+        criar_dieta_personalizada = self.tasks.criar_dieta_personalizada(
+            nutricionista,
             history=history
         )
 
-        # Create interview task
-        print("Criando task obter_informacoes_paciente...")
-        obter_informacoes_paciente = self.tasks.obter_informacoes_paciente(
-            entrevistador,
-            message,
+        print("Criando task criar_treino_personalizado...")
+        criar_treino_personalizado = self.tasks.criar_treino_personalizado(
+            personal_trainer,
             history=history
         )
 
-        # First, check if we have all required information
-        crew_check = Crew(
-            agents=[manager],
-            tasks=[gerenciar],
+        print("Criando task escrever_relatorio...")
+        escrever_relatorio = self.tasks.escrever_relatorio(
+            redator,
+            history=history
+        )
+
+        print("Criando task enviar_email...")
+        enviar_email = self.tasks.enviar_email(
+            enviador_de_email,
+            history=history
+        )
+
+        # Create and run the full workflow
+        crew_full = Crew(
+            agents=[nutricionista, personal_trainer, redator, enviador_de_email],
+            tasks=[criar_dieta_personalizada, criar_treino_personalizado, escrever_relatorio, enviar_email],
             verbose=True
         )
-        
-        result = crew_check.kickoff()
-        
-        # If we don't have all information, only run the interview task
-        if str(result) == "False":
-            print("Informações incompletas. Executando apenas a entrevista...")
-            crew_interview = Crew(
-                agents=[entrevistador],
-                tasks=[obter_informacoes_paciente],
-                verbose=True
-            )
-            return crew_interview.kickoff()
-        else:
-            # If we have all information, proceed with the full workflow
-            print("Informações completas. Executando o fluxo completo...")
-            print("Criando task criar_dieta_personalizada...")
-            criar_dieta_personalizada = self.tasks.criar_dieta_personalizada(
-                nutricionista,
-                message,
-                history=history
-            )
 
-            print("Criando task criar_treino_personalizado...")
-            criar_treino_personalizado = self.tasks.criar_treino_personalizado(
-                personal_trainer,
-                message,
-                history=history
-            )
-
-            print("Criando task escrever_relatorio...")
-            escrever_relatorio = self.tasks.escrever_relatorio(
-                redator,
-                message,
-                history=history
-            )
-
-            # Create and run the full workflow
-            crew_full = Crew(
-                agents=[entrevistador, nutricionista, personal_trainer, redator],
-                tasks=[obter_informacoes_paciente, criar_dieta_personalizada, criar_treino_personalizado, escrever_relatorio],
-                verbose=True
-            )
-
-            return crew_full.kickoff()
+        return crew_full.kickoff({'history': history})

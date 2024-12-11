@@ -49,3 +49,5 @@ app/__pycache__/
 crew/__pycache__/
 
 flow/
+credentials.json
+token.json
